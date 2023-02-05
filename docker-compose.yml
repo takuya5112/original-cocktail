@@ -1,0 +1,56 @@
+version: "3.9"
+volumes:
+  db-store:
+  psysh-store:
+services:
+  app:
+    env_file:
+      - ./src/.env
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+      target: ${APP_BUILD_TARGET:-development}
+    volumes:
+      - type: bind
+        source: ./src
+        target: /workspace
+      - type: volume
+        source: psysh-store
+        target: /root/.config/psysh
+        volume:
+          nocopy: true
+
+  web:
+    build:
+      context: .
+      dockerfile: ./docker/nginx/Dockerfile
+    ports:
+      - target: 80
+        published: ${WEB_PUBLISHED_PORT:-8084}
+        protocol: tcp
+        mode: host
+    volumes:
+      - type: bind
+        source: ./src
+        target: /workspace
+
+  db:
+    build:
+      context: .
+      dockerfile: ./docker/mysql/Dockerfile
+    ports:
+      - target: 3306
+        published: ${DB_PUBLISHED_PORT:-3315}
+        protocol: tcp
+        mode: host
+    volumes:
+      - type: volume
+        source: db-store
+        target: /var/lib/mysql
+        volume:
+          nocopy: true
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE:-original-cocktail}
+      - MYSQL_USER=${DB_USERNAME:-local}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-local}
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-root}
